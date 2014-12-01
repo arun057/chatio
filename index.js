@@ -89,10 +89,11 @@ pub.on("error", function (err) {
 sub.subscribe("main_chat");
 sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
+    var name = data.name || "";
     if (sockets[data.socket]) {
-        sockets[data.socket].broadcast.emit('chat message', data.message);
+        sockets[data.socket].broadcast.emit('chat message', name + " => " + data.message);
     } else {
-        io.emit('chat message', data.message);
+        io.emit('chat message', name + " => " + data.message);
     }
 });
 

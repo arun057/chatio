@@ -63,8 +63,7 @@ app.get('/js/jquery.min.map', function(req, res){
 
 io.on('connection', function(socket) {
     socket.broadcast.emit('hi');
-    var socket_copy = socket;
-    pub.set('socket', socket);
+    sockets[socket.id] = socket;
 
     console.log('user connected');
     socket.on('disconnect', function(){
@@ -73,7 +72,7 @@ io.on('connection', function(socket) {
     });
 
     socket.on('chat message', function(msg){
-        pub.publish("main_chat", {"socket": socket.id, "message": msg});
+        pub.publish("main_chat", JSON.stringify({"socket": socket.id, "message": msg}));
     });
 });
 
@@ -90,14 +89,11 @@ pub.on("error", function (err) {
 sub.subscribe("main_chat");
 sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
-    console.log(data["socket"]);
-    console.log(data["message"]);
-    console.log(channel);
-    console.log(data);
-    console.log(util.inspect(data));
-    // pub.get('socket', function(error, socket) {
-    //     socket.broadcast.emit('chat message', data.message);
-    // });
+    if (sockets[data.socket]) {
+        sockets[data.socket].broadcast.emit('chat message', data.message);
+    } else {
+        io.emit('chat message', data.message);
+    }
 });
 
 

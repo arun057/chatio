@@ -1,0 +1,12 @@
+{
+  "name": "chat-socket-io",
+  "version": "0.0.1",
+  "description": "telnet / http chat server",
+  "dependencies": {
+    "hiredis": "^0.1.17",
+    "jquery": "^2.1.1",
+    "redis": "^0.12.1",
+    "socket.io": "^1.2.1",
+    "socket.io-redis": "^0.1.4"
+  }
+}

@@ -1,8 +1,10 @@
-var app = require('express')(),
+var express = require('express'),
+    app = express(),
     http = require('http').Server(app),
     io = require('socket.io')(http),
     util = require('util'),
     redis = require('redis'),
+    chatService = require('./chat'),
     socket_io_redis  = require('socket.io-redis'),
     pub = redis.createClient(),
     sub = redis.createClient(),
@@ -15,40 +17,13 @@ io.adapter(socket_io_redis({
     subClient: sub
 }));
 
-// user management
-var UserStore = function() {
-    var user_store = 'user_store',
-        username_store = 'user_names';
-
-    function checkUser(username, callback) {
-        client.hexists(username_store, username, callback);
-    }
-
-    function checkAndCreateUser(username, socket, callback) {
-        checkUser(username, function(error, exists) {
-            if(exists) {
-                callback(error, false);
-            } else {
-                client.hset(username_store, username, socket);
-                client.hset(user_store, socket.id, JSON.stringify({name: username}));
-                sockets[socket.id] = socket;
-                callback(error, true);
-            }
-        });
-    }
-
-    function removeUser(socket_id, callback) {
-        client.hdel(user_store, socket_id);
-    }
-
-    return {
-        checkUser: checkUser,
-        checkAndCreateUser: checkAndCreateUser,
-        removeUser: removeUser
-    };
-}();
+chatService.initialize({
+    'redisClient' : client,
+    'redisPubClient' : pub
+});
 
 
+app.use(express.static(__dirname + '/public'));
 app.get('/', function(req, res){
   res.sendFile('index.html', { root: __dirname });
 });
@@ -68,16 +43,26 @@ io.on('connection', function(socket) {
     console.log('user connected');
     socket.on('disconnect', function(){
         console.log('user disconnected');
-        UserStore.removeUser(socket.id);
+        chatService.removeUser(socket.id);
     });
 
     socket.on('chat message', function(msg){
         pub.publish("main_chat", JSON.stringify({"socket": socket.id, "message": msg}));
     });
+
+    socket.on('user_create', function(username){
+        chatService.checkAndCreateUser(username, socket.id, function(error, status){
+            socket.emit('user_create',{status: status, name: username});
+        });
+    });
 });
 
 
 sub.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+client.on("error", function (err) {
     console.log("Error " + err);
 });
 

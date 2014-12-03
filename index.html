@@ -55,11 +55,25 @@
         if (data.status) {
           $('#username_input .error').hide();
           username = data.username;
+          loadRooms();
         } else {
-          $('#username_input .error').show();
           // username not available
+          $('#username_input .error').show();
         }
       });
+
+      function loadRooms() {
+        // FIXME:: Animate this.
+        $.ajax({
+          url: "/rooms",
+          dataType: "json",
+          success: function(data) {
+            console.log(data);
+          }
+        });
+        $('#username').hide();
+        $('#rooms').show();
+      }
 
     </script>
   </body>

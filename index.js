@@ -22,10 +22,17 @@ chatService.initialize({
     'redisPubClient' : pub
 });
 
+// chatService.resetData();
 
 app.use(express.static(__dirname + '/public'));
 app.get('/', function(req, res){
   res.sendFile('index.html', { root: __dirname });
+});
+
+app.get('/rooms', function(req, res){
+    chatService.getRooms(function(error, data){
+        res.send(data);
+    });
 });
 
 app.get('/js/jquery.min.js', function(req, res){

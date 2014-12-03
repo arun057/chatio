@@ -115,8 +115,15 @@ module.exports = {
                 var roomKey = this.roomKey;
                 that.leaveRoom(user_id, user[roomKey], function(error, status){
                     that.redisClient.hdel(that.userStore, user_id);
+                    that.redisClient.hdel(that.usernameStore, user["name"]);
                 });
             }
         });
+    },
+    resetData: function() {
+        this.redisClient.del(this.userStore);
+        this.redisClient.del(this.usernameStore);
+        this.redisClient.del(this.roomStore);
+        console.log('reset');
     }
 }

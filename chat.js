@@ -16,6 +16,15 @@ module.exports = {
     checkRoom: function(roomname, callback) {
         this.redisClient.hexists(this.roomStore, roomname, callback);
     },
+    sendMessage: function(user_id, message) {
+        var that = this;
+        this.getUser(user_id, function(error, user){
+            user = JSON.parse(user);
+            that.getRoom(user["room"], function(error, room) {
+                that.redisPubClient.publish("main_chat", JSON.stringify({"socket": user_id, "message": message, "name": user["name"], "room": user["room"],"sockets":room}));
+            });
+        });
+    },
     createOrJoinRoom: function(user_id, roomname, callback) {
         var that = this;
         this.checkRoom(roomname, function(error, exists) {
@@ -68,7 +77,7 @@ module.exports = {
                 user = JSON.parse(user);
                 var message = user["name"] + " entered the room.";
                 var roomKey = that.roomKey;
-                that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, }))
+                that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
                 that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
                 callback(false, true);
             });
@@ -84,7 +93,7 @@ module.exports = {
             var return_message = undefined;
             if (user_room && user_room == roomname) {
                 var message = username + " left the room.";
-                that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
+                that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "name": "room_admin"}));
                 return_message = 'left room';
             } else {
                 return_message = 'not in room';
@@ -139,7 +148,7 @@ module.exports = {
 }
 
 function removeItemFromArray(list, item) {
-    if (list.length > 0) {
+    if (list && list.length > 0) {
         var index = list.indexOf(item);
         if (index > -1) {
             list.splice(index, 1);

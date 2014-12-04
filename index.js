@@ -35,6 +35,11 @@ app.get('/rooms', function(req, res){
     });
 });
 
+app.get('/reset', function(req, res){
+    chatService.resetData();
+    res.json("true");
+});
+
 app.get('/js/jquery.min.js', function(req, res){
     res.sendFile('node_modules/jquery/dist/jquery.min.js', { root: __dirname });
 });
@@ -52,7 +57,7 @@ io.on('connection', function(socket) {
     });
 
     socket.on('chat message', function(msg){
-        pub.publish("main_chat", JSON.stringify({"socket": socket.id, "message": msg}));
+        chatService.sendMessage(socket.id, msg);
     });
 
     socket.on('user_create', function(username){
@@ -92,10 +97,11 @@ sub.subscribe("main_chat");
 sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
     var name = data.name || "";
-    if (sockets[data.socket]) {
-        sockets[data.socket].broadcast.emit('chat message', name + " => " + data.message);
-    } else {
-        io.emit('chat message', name + " => " + data.message);
+    var user_sockets = JSON.parse(data.sockets);
+    for (var key in user_sockets) {
+        if (sockets[user_sockets[key]]) {
+            sockets[user_sockets[key]].emit('chat message', name + ": " + data.message);
+        }
     }
 });
 

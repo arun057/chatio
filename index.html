@@ -18,7 +18,10 @@
         </form>
       </div>
       <div id="rooms">
-        <ul id="room_list"></ul>
+        <form action="" id="create_room">
+          <input type="text" autocomplete="off" id="newroom" placeholder="create room" />
+          <ul id="room_list"></ul>
+        </form>
       </div>
       <div id="chat">
         <ul id="messages"></ul>
@@ -27,54 +30,6 @@
         </form>
       </div>
     </div>
-    <script>
-      var socket = io();
-      var username = undefined;
-      $('form#chat_input').on('submit', function(e) {
-        var message_box = $('#m'),
-          message = message_box.val();
-        socket.emit('chat message', message);
-        message_box.val('');
-        $('#messages').append($('<li>').text(message));
-        e.preventDefault();
-        e.stopPropagation();
-      });
-
-      $('form#username_input').on('submit', function(e) {
-        var username_input = $('#user_name');
-        socket.emit('user_create', username_input.val());
-        e.preventDefault();
-        e.stopPropagation();
-      });
-
-      socket.on('chat message', function(msg){
-        $('#messages').append($('<li>').text(msg));
-      });
-
-      socket.on('user_create', function(data){
-        if (data.status) {
-          $('#username_input .error').hide();
-          username = data.username;
-          loadRooms();
-        } else {
-          // username not available
-          $('#username_input .error').show();
-        }
-      });
-
-      function loadRooms() {
-        // FIXME:: Animate this.
-        $.ajax({
-          url: "/rooms",
-          dataType: "json",
-          success: function(data) {
-            console.log(data);
-          }
-        });
-        $('#username').hide();
-        $('#rooms').show();
-      }
-
-    </script>
+    <script type="text/javascript" src="/js/script.js"></script>
   </body>
 </html>

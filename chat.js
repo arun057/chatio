@@ -16,23 +16,25 @@ module.exports = {
     checkRoom: function(roomname, callback) {
         this.redisClient.hexists(this.roomStore, roomname, callback);
     },
-    createOrJoinRoom: function(socket, user_id, roomname, callback) {
+    createOrJoinRoom: function(user_id, roomname, callback) {
         var that = this;
         this.checkRoom(roomname, function(error, exists) {
             if (exists) {
                 // room exists, join it
-                that.getRoom(that.roomStore, roomname, function(error, data) {
-                    users = JSON.parse(data);
-                    chat.room.users.push(id);
+                that.joinRoom(user_id, roomname, function(error, data) {
                     that.getUser(user_id, function(error, user) {
                         user = JSON.parse(user);
-                        socket.write("Room exists. \nYou are now connected to " + roomname + "\n" + chat.rooms[roomname].length + " users connected. \n");
+                        var message = "Room exists. \nYou are now connected to " + roomname + "\n";
                         if (user[that.roomKey]) {
                             that.leaveRoom(user_id, user[that.roomKey], function(error,status){
-                                that.joinRoom(user_id, roomname, callback);
+                                that.joinRoom(user_id, roomname, function(error, status) {
+                                    callback(error, message);
+                                });
                             });
                         } else {
-                            that.joinRoom(user_id, roomname, callback);
+                            that.joinRoom(user_id, roomname, function(error, status) {
+                                callback(error, message);
+                            });
                         }
                     });
                 });
@@ -43,18 +45,15 @@ module.exports = {
                         callback(error, "Room created. \nYou are now connected to " + roomname + "\n");
                     });
                 });
-                // FIXME
-                chat.rooms[roomname] = [id];
-                chat.users[id]["room"] = roomname;
             }
         });
     },
     createRoom: function(roomname, callback) {
-        this.redisClient.hset(this.roomStore, roomname, "");
+        this.redisClient.hset(this.roomStore, roomname, JSON.stringify([]));
         callback(false, true);
     },
     getRoom: function(roomname, callback) {
-        this.redisClient.ghet(this.roomStore, roomname, callback);
+        this.redisClient.hget(this.roomStore, roomname, callback);
     },
     getUser: function(user_id, callback) {
         this.redisClient.hget(this.userStore, user_id, callback);
@@ -65,32 +64,43 @@ module.exports = {
             room = JSON.parse(room);
             room.push(user_id);
             that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
-            var message = username + " entered the room.";
-            var roomKey = that.roomKey;
-            that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
-            callback(false, true);
+            that.getUser(user_id, function(error, user){
+                user = JSON.parse(user);
+                var message = user["name"] + " entered the room.";
+                var roomKey = that.roomKey;
+                that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, }))
+                that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
+                callback(false, true);
+            });
         });
     },
     leaveRoom: function(user_id, roomname, callback) {
-        // reset user
-        // join lobby
         var that = this;
         this.getUser(user_id, function(error, user) {
             user = JSON.parse(user);
             var user_room = user[that.roomKey];
-            var username = user["username"];
+            var username = user["name"];
             var roomKey = that.roomKey;
+            var return_message = undefined;
             if (user_room && user_room == roomname) {
                 var message = username + " left the room.";
                 that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
-                callback(undefined, 'left room');
+                return_message = 'left room';
             } else {
-                callback(undefined, 'not in room');
+                return_message = 'not in room';
             }
+            that.getRoom(roomname, function(error, room) {
+                // remove user from room.
+                room = JSON.parse(room);
+                removeItemFromArray(room, user_id);
+                that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
+                that.redisClient.hset(that.userStore, JSON.stringify({"name" : username, "socket" : user_id, "room": roomname}));
+                callback(error, return_message);
+            });
         });
     },
     getRooms: function(callback) {
-        this.redisClient.hgetall(this.roomStore, callback);
+        this.redisClient.hgetall(this.roomStore,callback);
     },
     checkUser: function(username, callback) {
         this.redisClient.hexists(this.usernameStore, username, callback);
@@ -126,4 +136,14 @@ module.exports = {
         this.redisClient.del(this.roomStore);
         console.log('reset');
     }
+}
+
+function removeItemFromArray(list, item) {
+    if (list.length > 0) {
+        var index = list.indexOf(item);
+        if (index > -1) {
+            list.splice(index, 1);
+        }
+    }
+    return list;
 }

@@ -31,7 +31,7 @@ app.get('/', function(req, res){
 
 app.get('/rooms', function(req, res){
     chatService.getRooms(function(error, data){
-        res.send(data);
+        res.json(data);
     });
 });
 
@@ -47,9 +47,7 @@ io.on('connection', function(socket) {
     socket.broadcast.emit('hi');
     sockets[socket.id] = socket;
 
-    console.log('user connected');
     socket.on('disconnect', function(){
-        console.log('user disconnected');
         chatService.removeUser(socket.id);
     });
 
@@ -60,6 +58,18 @@ io.on('connection', function(socket) {
     socket.on('user_create', function(username){
         chatService.checkAndCreateUser(username, socket.id, function(error, status){
             socket.emit('user_create',{status: status, name: username});
+        });
+    });
+
+    socket.on('create_room', function(room) {
+        chatService.createOrJoinRoom(socket.id, room, function(error, message) {
+            socket.emit('create_room', message);
+        });
+    });
+
+    socket.on('join_room', function(room){
+        chatService.joinRoom(socket.id, room, function(error, status) {
+            socket.emit('join_room',room);
         });
     });
 });

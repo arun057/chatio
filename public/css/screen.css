@@ -22,17 +22,17 @@ html, body, #wrapper { width: 100%; height: 100%;}
 
 
 
-#username {
+#rooms, #username {
 	background: #ececec;
 	width: 100%;
 	height: 100%;
 }
-#username_input {
+#create_room, #username_input {
 	text-align: center;
 	width: 100%;
 	height: 100%;
 }
-#user_name {
+#newroom, #user_name {
 	text-align: center;
 	vertical-align: middle;
 	margin-top: 10%;
@@ -45,3 +45,11 @@ html, body, #wrapper { width: 100%; height: 100%;}
 }
 #username_input .error{display: none;}
 
+#room_list li {
+	font-size: 15px;
+}
+
+#room_list li:hover {
+	cursor: pointer;
+	background: #333;
+}

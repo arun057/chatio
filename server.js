@@ -33,11 +33,14 @@ var commands = {
         socket.end('Goodbye!\n');
     },
     '@help' : function(data, socket) {
-        //
+        printHelp(socket);
     },
     '@name' : function(data, socket) {
         var id = socket._handle.fd;
-        socket.write('Your name is : ' + chat.users[id].name + '\n');
+        chatService.getUser(id, function(error, user){
+            user = JSON.parse(user);
+            socket.write('Your name is : ' + user["name"] + '\n');
+        });
     },
     '@total' : function(data, socket) {
         socket.write(sockets.length + " \n");
@@ -46,36 +49,38 @@ var commands = {
     '/join' : function(data, socket) {
         var id = socket._handle.fd;
         var roomname = data.split(" ")[1];
-        if (typeof(chat.rooms[roomname]) == undefined ) {
-            socket.write("Room not found. \n");
-        } else {
-            chat.rooms[roomname].push(id);
-            chat.users[id]["room"] = roomname;
-            socket.write("Joined " + roomname + "\n" + chat.rooms[roomname].length + " users connected. \n");
-        }
+        chatService.joinRoom(id, roomname, function(error, status){
+            if ( !status ) {
+                socket.write("Room not found. \n");
+            } else {
+                chat.users[id]["room"] = roomname;
+                socket.write("Joined " + roomname + "\n");
+            }
+        });
     },
     '/rooms' : function(data, socket) {
-        if (Object.keys(chat.rooms).length > 0) {
-            for (var room in chat.rooms) {
-                socket.write(" *  " + room + " (" + chat.rooms[room].length + ") \n");
+        chatService.getRooms(function(error, rooms){
+            if (rooms && Object.keys(rooms).length > 0) {
+                for (var room in rooms) {
+                    var users = JSON.parse(rooms[room]);
+                    socket.write(" *  " + room + " (" + users.length + ") \n");
+                }
+                socket.write("/join <roomname> to join room. \n");
+            } else {
+                socket.write("No rooms created yet. /newroom <roomname> to create room. \n");
             }
-            socket.write("/join <roomname> to join room. \n");
-        } else {
-            socket.write("No rooms created yet. /newroom <roomname> to create room. \n");
-        }
+        });
     },
     '/newroom' : function(data, socket) {
         var id = socket._handle.fd;
         var roomname = data.split(" ")[1];
-        if (chat.rooms[roomname] == undefined ) {
-            chat.rooms[roomname] = [id];
-            chat.users[id]["room"] = roomname;
-            socket.write("Room created. \nYou are now connected to " + roomname + "\n");
-        } else {
-            chat.rooms[roomname].push(id);
-            chat.users[id]["room"] = roomname;
-            socket.write("Room already created. \nYou are now connected to " + roomname + "\n" + chat.rooms[roomname].length + " users connected. \n");
-        }
+        chatService.createOrJoinRoom(id, roomname, function(error, message){
+            socket.write(message);
+        });
+    },
+    '@reset' : function(data, socket) {
+        chatService.resetData();
+        socket.write('Reset complete');
     }
 };
 
@@ -88,40 +93,43 @@ function receiveData(data, socket) {
         checkName(cleanData, socket);
     } else {
         cleanData = cleanData + "\n";
-        pub.publish("main_chat", JSON.stringify({"socket": id, "message": cleanData, "name": chat.users[id].name}));
+        chatService.sendMessage(id, cleanData);
     }
 }
 
 sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
-    var socket_connected = false;
     var name = data.name || "";
-    var message = name + " => " + data.message;
-
-    for (var i = 0; i < sockets.length; i++) {
-        if (chat.users[data.socket] == undefined || chat.users[data.socket].socket != sockets[i]) {
-            sockets[i].write(message);
+    var user_id = data.socket || "";
+    var user_sockets = JSON.parse(data.sockets);
+    for (var key in user_sockets) {
+        if (chat.users[user_sockets[key]] && user_sockets[key] != user_id) {
+            chat.users[user_sockets[key]].socket.write("<" + name + "> " + data.message);
         }
     }
 });
 
 
 function checkName(name, socket) {
-    var free = true;
-    for (var item in chat.users) {
-        var user = chat.users[item];
-        if (user.name == name) {
-            free = false;
+    var id = socket._handle.fd;
+    chatService.checkAndCreateUser(name, id, function(error, status){
+        if (!status) {
             socket.write('Sorry, name taken.\nLogin Name? ');
-            break;
+        } else {
+            socket.write('Welcome ' + name + ' \n');
+            chat.users[id].name = name;
         }
-    }
-    if (free) {
-        var id = socket._handle.fd;
-        chat.users[id].name = name;
-        socket.write('Welcome ' + name + ' \n');
-        console.log('Connected User : ' + name);
-    }
+    });
+}
+
+function printHelp(socket) {
+    socket.write(
+        "@name - retrieve your login name. \n" +
+        "/join < room name > - join room. \n" +
+        "/rooms - Lists all rooms. \n" +
+        "/newroom < room name > - Create a room. \n" +
+        "@quit - Quit chat. \n"
+    );
 }
 
 function newSocket (socket) {
@@ -130,12 +138,15 @@ function newSocket (socket) {
     sockets.push(socket);
     chat.users[id] = {name: undefined, socket: socket};
     socket.write('Welcome to the Telnet Server!\n');
+    printHelp(socket);
     socket.write('Login Name?  ');
     socket.on('data', function(data) {
         receiveData(data, socket);
     }).on('end', function() {
-        closeSocket(socket);
-        console.log("User disconnected: " + chat.users[id].name);
+        chatService.removeUser(id, function(error, status){
+            closeSocket(socket);
+            console.log("User disconnected: " + chat.users[id].name);
+        });
     });
 }
 

@@ -20,8 +20,9 @@ module.exports = {
         var that = this;
         this.getUser(user_id, function(error, user){
             user = JSON.parse(user);
-            that.getRoom(user["room"], function(error, room) {
-                that.redisPubClient.publish("main_chat", JSON.stringify({"socket": user_id, "message": message, "name": user["name"], "room": user["room"],"sockets":room}));
+            var roomKey = that.roomKey;
+            that.getRoom(user[roomKey], function(error, room) {
+                that.redisPubClient.publish("main_chat", JSON.stringify({"socket": user_id, "message": message, "name": user["name"], roomKey: user[roomKey],"sockets":room}));
             });
         });
     },
@@ -70,17 +71,21 @@ module.exports = {
     joinRoom: function(user_id, roomname, callback) {
         var that = this;
         this.getRoom(roomname, function(error, room) {
-            room = JSON.parse(room);
-            room.push(user_id);
-            that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
-            that.getUser(user_id, function(error, user){
-                user = JSON.parse(user);
-                var message = user["name"] + " entered the room.";
-                var roomKey = that.roomKey;
-                that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
-                that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
-                callback(false, true);
-            });
+            if (room) {
+                room = JSON.parse(room);
+                room.push(user_id);
+                that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
+                that.getUser(user_id, function(error, user){
+                    user = JSON.parse(user);
+                    var message = user["name"] + " entered the room.";
+                    var roomKey = that.roomKey;
+                    that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
+                    that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
+                    callback(false, true);
+                });
+            } else {
+                callback(false, false);
+            }
         });
     },
     leaveRoom: function(user_id, roomname, callback) {
@@ -100,10 +105,11 @@ module.exports = {
             }
             that.getRoom(roomname, function(error, room) {
                 // remove user from room.
+                var roomKey = that.roomKey;
                 room = JSON.parse(room);
                 removeItemFromArray(room, user_id);
                 that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
-                that.redisClient.hset(that.userStore, JSON.stringify({"name" : username, "socket" : user_id, "room": roomname}));
+                that.redisClient.hset(that.userStore, JSON.stringify({"name" : username, "socket" : user_id, roomKey: roomname}));
                 callback(error, return_message);
             });
         });
@@ -131,10 +137,10 @@ module.exports = {
         this.getUser(user_id, function(error, user){
             if (user) {
                 user = JSON.parse(user);
-                var roomKey = this.roomKey;
+                var roomKey = that.roomKey;
                 that.leaveRoom(user_id, user[roomKey], function(error, status){
                     that.redisClient.hdel(that.userStore, user_id);
-                    that.redisClient.hdel(that.usernameStore, user["name"]);
+                    that.redisClient.hdel(that.usernameStore, user[roomKey]);
                 });
             }
         });

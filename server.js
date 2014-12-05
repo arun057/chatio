@@ -30,7 +30,11 @@ sub.subscribe("main_chat");
 var clients = [];
 var commands = {
     '@quit' : function(data, socket) {
-        socket.end('Goodbye!\n');
+        chatService.removeUser(id, function(error, status){
+            closeSocket(socket);
+            console.log("User disconnected: " + chat.users[id].name);
+            socket.end('Goodbye!\n');
+        });
     },
     '@help' : function(data, socket) {
         printHelp(socket);

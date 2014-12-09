@@ -97,6 +97,7 @@ sub.subscribe("main_chat");
 sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
     var name = data.name || "";
+    data.sockets = data.sockets || "[]";
     var user_sockets = JSON.parse(data.sockets);
     for (var key in user_sockets) {
         if (sockets[user_sockets[key]]) {

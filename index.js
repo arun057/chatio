@@ -97,10 +97,11 @@ sub.subscribe("main_chat");
 sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
     var name = data.name || "";
+    var user_id = data.socket || "";
     data.sockets = data.sockets || "[]";
     var user_sockets = JSON.parse(data.sockets);
     for (var key in user_sockets) {
-        if (sockets[user_sockets[key]]) {
+        if (sockets[user_sockets[key]] && user_sockets[key] != user_id) {
             sockets[user_sockets[key]].emit('chat message', name + ": " + data.message);
         }
     }

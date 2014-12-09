@@ -33,8 +33,8 @@ var commands = {
         var id = socket._handle.fd;
         chatService.removeUser(id, function(error, status){
             closeSocket(socket);
-            console.log("User disconnected: " + chat.users[id].name);
             socket.end('Goodbye!\n');
+            console.log("User disconnected: " + chat.users[id].name);
         });
     },
     '@help' : function(data, socket) {

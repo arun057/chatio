@@ -82,6 +82,12 @@ module.exports = {
                     if (typeof(user) != "object") user = JSON.parse(user);
                     var message = user["name"] + " entered the room.";
                     var roomKey = that.roomKey;
+                    var current_room = user[roomKey] || "";
+                    if (current_room != "") {
+                        that.leaveRoom(user_id, current_room, function(error, status){
+                            // make user leave room
+                        });
+                    }
                     if (user[roomKey] != roomname) {
                         room.push(user_id);
                         that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));

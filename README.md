@@ -52,7 +52,7 @@ Testing:
 
 [Mocha](https://github.com/mochajs/mocha) is used for unit testing on this app. Not everything is tested.
 
-  mocha test
+	mocha test
 
 TODO:
 --

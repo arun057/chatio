@@ -53,7 +53,9 @@ io.on('connection', function(socket) {
     sockets[socket.id] = socket;
 
     socket.on('disconnect', function(){
-        chatService.removeUser(socket.id);
+        chatService.removeUser(socket.id, function(error, status){
+            // nothign to do here.
+        });
     });
 
     socket.on('chat message', function(msg){
@@ -102,7 +104,7 @@ sub.on("message", function (channel, data) {
     var user_sockets = JSON.parse(data.sockets);
     for (var key in user_sockets) {
         if (sockets[user_sockets[key]] && user_sockets[key] != user_id) {
-            sockets[user_sockets[key]].emit('chat message', name + ": " + data.message);
+            sockets[user_sockets[key]].emit('chat message', "<" + name + "> |   " + data.message);
         }
     }
 });

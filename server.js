@@ -112,7 +112,7 @@ sub.on("message", function (channel, data) {
     var user_sockets = JSON.parse(data.sockets);
     for (var key in user_sockets) {
         if (chat.users[user_sockets[key]] && user_sockets[key] != user_id) {
-            chat.users[user_sockets[key]].socket.write("<" + name + "> " + data.message);
+            chat.users[user_sockets[key]].socket.write("<" + name + "> |   " + data.message);
         }
     }
 });

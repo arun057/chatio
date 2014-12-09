@@ -55,11 +55,13 @@ var commands = {
         var id = socket._handle.fd;
         var roomname = data.split(" ")[1];
         chatService.joinRoom(id, roomname, function(error, status){
-            if ( !status ) {
-                socket.write("Room not found. \n");
-            } else {
+            if ( status === true ) {
                 chat.users[id]["room"] = roomname;
                 socket.write("Joined " + roomname + "\n");
+            } else if(typeof(status) == "string") {
+                socket.write(status + "\n");
+            } else {
+                socket.write("Room not found. \n");
             }
         });
     },
@@ -106,6 +108,7 @@ sub.on("message", function (channel, data) {
     var data = JSON.parse(data);
     var name = data.name || "";
     var user_id = data.socket || "";
+    data.sockets = data.sockets || "[]";
     var user_sockets = JSON.parse(data.sockets);
     for (var key in user_sockets) {
         if (chat.users[user_sockets[key]] && user_sockets[key] != user_id) {

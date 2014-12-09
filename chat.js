@@ -77,16 +77,20 @@ module.exports = {
         var that = this;
         this.getRoom(roomname, function(error, room) {
             if (room) {
-                room = JSON.parse(room);
-                room.push(user_id);
-                that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
+                if (typeof(room) != "object") room = JSON.parse(room);
                 that.getUser(user_id, function(error, user){
-                    user = JSON.parse(user);
+                    if (typeof(user) != "object") user = JSON.parse(user);
                     var message = user["name"] + " entered the room.";
                     var roomKey = that.roomKey;
-                    that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
-                    that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
-                    callback(false, true);
+                    if (user[roomKey] != roomname) {
+                        room.push(user_id);
+                        that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
+                        that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
+                        that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
+                        callback(false, true);
+                    } else {
+                        callback(false, "You are already in this room");
+                    }
                 });
             } else {
                 callback(false, false);

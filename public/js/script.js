@@ -61,6 +61,14 @@
     });
   }
 
+  $('#switch_rooms').on('click', function(e){
+    $('#chat').animate({'opacity':0},300,function(){
+      loadRooms();
+    });
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
   function loadRooms() {
     var roomlist = $('#room_list');
     roomlist.html('');
@@ -74,10 +82,7 @@
             roomlist.append(element);
           });
           roomlist.find('li').on('click', function() {
-            console.log('clicked');
             var name = $(this).text();
-            console.log(name);
-            console.log($(this));
             socket.emit('join_room', name);
           });
         }
@@ -85,9 +90,9 @@
     });
     $('#user_name').attr('disabled','disabled');
     $('#username').animate({'opacity': 0},350, function() {
-      $(this).hide();
-      $('#rooms').show().animate({'opacity': 1}, 300, function() {
-        // finished animation
+        $(this).hide();
+        $('#rooms').show().animate({'opacity': 1}, 300, function() {
+        $('#create_room').focus();
       });
     });
   }

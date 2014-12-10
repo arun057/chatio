@@ -83,17 +83,14 @@ module.exports = {
                     var message = user["name"] + " entered the room.";
                     var roomKey = that.roomKey;
                     var current_room = user[roomKey] || "";
-                    if (current_room != "") {
+                    if (current_room != roomname) {
                         that.leaveRoom(user_id, current_room, function(error, status){
-                            // make user leave room
+                            room.push(user_id);
+                            that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
+                            that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
+                            that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
+                            callback(false, true);
                         });
-                    }
-                    if (user[roomKey] != roomname) {
-                        room.push(user_id);
-                        that.redisClient.hset(that.roomStore, roomname, JSON.stringify(room));
-                        that.redisClient.hset(that.userStore, user_id, JSON.stringify({"name": user["name"], "socket":user_id, "room":roomname}))
-                        that.redisPubClient.publish("main_chat", JSON.stringify({"message": message, roomKey: roomname, "username": "room_admin"}));
-                        callback(false, true);
                     } else {
                         callback(false, "You are already in this room");
                     }

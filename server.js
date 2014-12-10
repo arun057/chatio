@@ -87,7 +87,8 @@ var commands = {
     },
     '@reset' : function(data, socket) {
         chatService.resetData();
-        socket.write('Reset complete');
+        socket.write('Reset complete \n');
+        socket.end('Goodbye!\n');
     }
 };
 
